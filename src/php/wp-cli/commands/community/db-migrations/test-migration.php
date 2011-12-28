@@ -6,9 +6,8 @@
  * @param array $args
  */
 function test_generate() {
-	list( $file, $name ) = $this->parse_name( $args, __FUNCTION__ );
 	$dumper = new sfYamlDumper();
-	$exec = $this->connect_string();
+	$exec = DbMigrationCommand::connect_string();
 	$query = "SELECT * FROM wp_rg_form";
   $result = mysql_query($query);
 	

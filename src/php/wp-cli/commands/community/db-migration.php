@@ -34,7 +34,7 @@ public function __construct( $args, $assoc_args ) {
 	 * @param void
 	 * @return string $connect
 	 */
-	protected function connect_string() {
+	function connect_string() {
 		$connect = sprintf( 'mysql --database=%s --user=%s --password=%s',
 			DB_NAME, DB_USER, DB_PASSWORD);
 		return $connect;
@@ -49,7 +49,6 @@ public function __construct( $args, $assoc_args ) {
 	 */
 	protected function connect( $args = array() ) {
 		$connect = $this->connect_string();
-		WP_CLI::line( $connect );
 	}
     
 	/**
@@ -152,6 +151,46 @@ public function __construct( $args, $assoc_args ) {
    	 WP_CLI::line();
   }
   
+	/**
+	 * Generate migration template by type and name
+	 *
+	 * @param array $args
+	 *        array $assoc_args
+	 * @return void
+	 */
+  function generate($args, $assoc_args) { 
+ 
+    if ( array_key_exists('type', $assoc_args) )
+     $type = $assoc_args['type'];
+    else {
+      WP_CLI::line( '<type> missing.  Usage: wp db-migrate generate --type=<plugin|theme|core> --name=<name>' ); 
+      exit; 
+    }
+   
+    if ( array_key_exists('name', $assoc_args) )
+     $name = $assoc_args['name'];
+    else {
+      WP_CLI::line( '<name> missing.  Usage: wp db-migrate generate --type=<plugin|theme|core> --name=<name>' ); 
+      exit; 
+    }
+    
+    $generators_found = false;
+      
+    if (array_key_exists($type, $this->generate)) {         
+      if (array_key_exists($name, $this->generate[$type])) {
+        $generators_found = true;
+        
+        foreach ( $this->generate[$type][$name] as $gen)
+          call_user_func($gen);        
+      }
+    }
+      
+    if ($generators_found == false) {
+  	  WP_CLI::line('No Generations found for type: '.$type.' and name: '.$name);
+    }
+ 
+  }
+
 	/**
 	 * List registered migration hooks by type and name, called by support command
 	 *
