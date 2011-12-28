@@ -91,35 +91,62 @@ public function __construct( $args, $assoc_args ) {
 	 */
   function support($args, $assoc_args) { 
  
-     if ( array_key_exists('type', $assoc_args) )
-       $type = $assoc_args['type'];
-     else
-       $type = 'core';    
+    if ( array_key_exists('type', $assoc_args) )
+     $type = $assoc_args['type'];
+    else
+     $type = 'core';    
    
-   	 // Print the header
-   	 WP_CLI::line();     
-   	 WP_CLI::line('Installed migration support:');  
-   	 WP_CLI::line();     
+    // Print the header
+    WP_CLI::line();     
+    WP_CLI::line('Installed migration support:');  
+    WP_CLI::line(); 
      
-     if ( array_key_exists( 'name', $assoc_args ) ) {
+    if ( array_key_exists( 'name', $assoc_args ) ) {
          
-         $name = $assoc_args['name'];
-         $this->list_hooks('generate',$type,$name);
-         $this->list_hooks('migrate',$type,$name);
-   
+      $name = $assoc_args['name'];
+      $generators_found = true;
+      $migrations_found = true;
+      
+      if (array_key_exists($type, $this->generate)) {         
+        $generators_found = $this->list_hooks('generate',$type,$name);
+      } else {
+        $generators_found = false;
+      } 
+      if ($generators_found == false) {
+    	  WP_CLI::line('No Generations found for type: '.$type.' and name: '.$name);
+      }
+      
+      if (array_key_exists($type, $this->apply)) {
+        $migrations_found = $this->list_hooks('migrate',$type,$name);
+      } else {
+        $migrations_found = false;
+      }
+      if ($migrations_found == false) {
+      	 WP_CLI::line('No Migrations found for type: '.$type.' and name: '.$name);
+      }
+
      } else {
        
-       if (array_key_exists($type, $this->generate))
-         foreach(array_keys($this->generate["{$type}"]) as $name) {       
-           $this->list_hooks("generate",$type,$name);
+       if (array_key_exists($type, $this->generate)) {
+         if (count($this->generate[$type]) != 0 ) {
+           foreach(array_keys($this->generate[$type]) as $name) {       
+             $this->list_hooks("generate",$type,$name);
+           }
          }
-         
+       } else {
+         	 WP_CLI::line('No Generations found for type: '.$type);
+       } 
           
-       if (array_key_exists($type, $this->apply))
-         foreach(array_keys($this->apply["{$type}"]) as $name) {       
-           $this->list_hooks("migrate",$type,$name);
+       if (array_key_exists($type, $this->apply)) {
+         if (count($this->apply[$type]) != 0 ) {
+           foreach(array_keys($this->apply[$type]) as $name) {       
+             $this->list_hooks("migrate",$type,$name);
+           } 
          } 
-           
+       } else {
+       	 WP_CLI::line('No Migrations found for type: '.$type);
+       }
+        
      }
    	 // Print the footer
    	 WP_CLI::line();
@@ -136,15 +163,21 @@ public function __construct( $args, $assoc_args ) {
   private function list_hooks($kind, $type, $name) {
     
     if ($kind == "generate") { 
-      if (array_key_exists($name, $this->generate["{$type}"]))
-        foreach($this->generate["{$type}"]["{$name}"] as $hook) { 
+      if (array_key_exists($name, $this->generate[$type])) {
+        foreach($this->generate[$type][$name] as $hook) { 
           WP_CLI::line( 'Generator: '.$type.' '.$name.' '.$hook ); 
-        }
+        } 
+      } else {
+        return false;
+      }
     } else { 
-      if (array_key_exists($name, $this->apply["{$type}"]))
-        foreach($this->apply["{$type}"]["{$name}"] as $hook) {  
+      if (array_key_exists($name, $this->apply[$type])) {
+        foreach($this->apply[$type][$name] as $hook) {  
           WP_CLI::line( 'Migration: '.$type.' '.$name.' '.$hook ); 
         } 
+      } else {
+        return false;
+      }
     }
   
   }
