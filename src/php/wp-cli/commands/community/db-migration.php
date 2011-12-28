@@ -1,0 +1,182 @@
+<?php
+WP_CLI::addCommand('db-migrate', 'DbMigrationCommand');
+
+/**
+ * The WP Database Migration
+ *
+ * @package wp-cli
+ * @subpackage commands/community
+ * @maintainer Pauli Price
+ */
+class DbMigrationCommand extends WP_CLI_Command {
+
+public function __construct( $args, $assoc_args ) {
+    $generate['core']   = array();
+    $generate['plugin'] = array();
+    $generate['theme']  = array();
+    
+    $apply['core']      = array();
+    $apply['plugin']    = array();
+    $apply['theme']     = array();
+    
+    // Load all migrations
+    foreach ( glob(WP_CLI_ROOT.'/commands/community/db-migrations/*.php') as $filename ) {
+    	include $filename;
+    }
+		parent::__construct( $args, $assoc_args );
+  
+  }
+
+	// TODO: dry out versus sql commands file
+	/**
+	 * return a string to connecting to the DB.
+	 *
+	 * @param void
+	 * @return string $connect
+	 */
+	protected function connect_string() {
+		$connect = sprintf( 'mysql --database=%s --user=%s --password=%s',
+			DB_NAME, DB_USER, DB_PASSWORD);
+		return $connect;
+	}
+
+	// TODO: dry out versus sql commands file
+	/**
+	 * A string for connecting to the DB.
+	 *
+	 * @param string $args
+	 * @return void
+	 */
+	protected function connect( $args = array() ) {
+		$connect = $this->connect_string();
+		WP_CLI::line( $connect );
+	}
+    
+	/**
+	 * Regester migration template generation hooks
+	 *
+	 * @param string $type
+	 *        string $name
+	 *        function $func
+	 * @return void
+	 */
+  function add_migration_generator($type, $name, $func) {
+    if (!is_array($this->generate[$type][$name]))
+      $this->generate[$type][$name] = array();
+    
+    array_push($this->generate[$type][$name], $func);  
+  }
+  
+	/**
+	 * Regester migration hooks
+	 *
+	 * @param string $type
+	 *        string $name
+	 *        function $func
+	 * @return void
+	 */
+  function add_migration($type, $name, $func) {    
+    if (!is_array($this->apply[$type][$name]))
+      $this->apply[$type][$name] = array();
+    
+    array_push($this->apply[$type][$name], $func);  
+  }
+  
+	/**
+	 * List registered migration hooks by type or by type and name
+	 *
+	 * @param array $args
+	 *        array $assoc_args
+	 * @return void
+	 */
+  function support($args, $assoc_args) { 
+ 
+     if ( array_key_exists('type', $assoc_args) )
+       $type = $assoc_args['type'];
+     else
+       $type = 'core';    
+   
+   	 // Print the header
+   	 WP_CLI::line();     
+   	 WP_CLI::line('Installed migration support:');  
+   	 WP_CLI::line();     
+     
+     if ( array_key_exists( 'name', $assoc_args ) ) {
+         
+         $name = $assoc_args['name'];
+         $this->list_hooks('generate',$type,$name);
+         $this->list_hooks('migrate',$type,$name);
+   
+     } else {
+       
+       if (array_key_exists($type, $this->generate))
+         foreach(array_keys($this->generate["{$type}"]) as $name) {       
+           $this->list_hooks("generate",$type,$name);
+         }
+         
+          
+       if (array_key_exists($type, $this->apply))
+         foreach(array_keys($this->apply["{$type}"]) as $name) {       
+           $this->list_hooks("migrate",$type,$name);
+         } 
+           
+     }
+   	 // Print the footer
+   	 WP_CLI::line();
+  }
+  
+	/**
+	 * List registered migration hooks by type and name, called by support command
+	 *
+	 * @param string $kind - generate or migrate
+	 *        string $type - primary array key
+	 *        string $name - secondary array key
+	 * @return void
+	 */
+  private function list_hooks($kind, $type, $name) {
+    
+    if ($kind == "generate") { 
+      if (array_key_exists($name, $this->generate["{$type}"]))
+        foreach($this->generate["{$type}"]["{$name}"] as $hook) { 
+          WP_CLI::line( 'Generator: '.$type.' '.$name.' '.$hook ); 
+        }
+    } else { 
+      if (array_key_exists($name, $this->apply["{$type}"]))
+        foreach($this->apply["{$type}"]["{$name}"] as $hook) {  
+          WP_CLI::line( 'Migration: '.$type.' '.$name.' '.$hook ); 
+        } 
+    }
+  
+  }
+  
+  
+	/**
+	 * Help function for this command
+	 */
+	public static function help() {
+		WP_CLI::line( <<<EOB
+      usage: wp migration <sub-command> [--type <plugin|theme|core>] [--name <name>] [--path <directory-path>] [--file <filename>] [--stage <stage-name>]
+
+      Available sub-commands:
+         support        list of migration callbacks registered
+           --type       category of migration, either plugin, theme, or core.  Defaults to core, if not specified
+           --name       name of migration.  Defaults to all for specified type
+                 
+         generate       create a template migration file reflecting current settings
+           --type       category of migration, either plugin, theme, or core.  Defaults to core, if not specified
+           --name       name of migration to apply.  Defaults to all for specified type
+           
+         dry-run        list migration files to be applied, by type and stage
+           --type       category of migration, either plugin, theme, or core.  Defaults to core, if not specified
+           --name       name of migration to apply.  Defaults to all for specified type
+           --stage      specifies the migration file section to process.  If not provided, migration will use the default section.  If no section for <stage-name> is found "nothing to do for stage='<stage-name>'" will be reported. 
+                 
+         apply           update the wp database according to the contents of the migration file(s) specified
+           --type       category of migration, either plugin, theme, or core.  Defaults to core, if not specified
+           --name       name of migration to apply.  Defaults to all for specified type
+           --stage      specifies the migration file section to process.  If not provided, migration will use the default section.  If no section for <stage-name> is found "nothing to do for stage='<stage-name>'" will be reported. 
+EOB
+	);
+	}
+}
+

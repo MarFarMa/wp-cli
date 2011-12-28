@@ -20,34 +20,6 @@ class PluginCommand extends WP_CLI_Command {
 		parent::__construct( $args, $assoc_args );
 	}
 
-	// TODO: dry out versus sql commands file
-	/**
-	 * return a string to connecting to the DB.
-	 *
-	 * @param void
-	 * @return string $connect
-	 */
-	protected function connect_string() {
-		$connect = sprintf( 'mysql --database=%s --user=%s --password=%s',
-			DB_NAME, DB_USER, DB_PASSWORD);
-		return $connect;
-	}
-
-	// TODO: dry out versus sql commands file
-	/**
-	 * A string for connecting to the DB.
-	 *
-	 * @param string $args
-	 * @return void
-	 */
-	function connect( $args = array() ) {
-		$connect = $this->connect_string();
-		WP_CLI::line( $connect );
-	}
-
-
-
-
 	/**
 	 * Get the status of one or all plugins
 	 *
@@ -289,47 +261,6 @@ class PluginCommand extends WP_CLI_Command {
 		uninstall_plugin( $file );
 	}
 
-	/**
-	 * Export settings of a plugin
-	 *
-	 * @param array $args
-	 */
-	function export( $args ) {
-		list( $file, $name ) = $this->parse_name( $args, __FUNCTION__ );
-		$dumper = new sfYamlDumper();
-		$exec = $this->connect_string();
-		$query = "SELECT * FROM wp_rg_form";
-	    $result = mysql_query($query);
-	
-        while ($line = mysql_fetch_array($result))
-        {
-           //foreach ($line as $value)
-            //{
-			  $yaml = $dumper->dump($line);
-              print "$yaml\n";
-           //}
-        }
-		// export YAML data
-
-	}
-
-
-	/**
-	 * Import settings of a plugin
-	 *
-	 * @param array $args
-	 */
-	function import( $args ) {
-		list( $file, $name ) = $this->parse_name( $args, __FUNCTION__ );
-
-		if ( is_plugin_active( $file ) ) {
-			$this->deactivate( $args );
-			// import YAML data
-			$this->activate( $args );
-		}
-
-	}
-
 
 	/**
 	 * Delete a plugin
@@ -429,10 +360,10 @@ class PluginCommand extends WP_CLI_Command {
 	public static function help() {
 		WP_CLI::line( <<<EOB
 usage: wp plugin <sub-command> [<plugin-name>]
-   or: wp plugin path [<plugin-name>] [--directory]
-   or: wp plugin install <plugin-name> [--activate] [--dev]
-   or: wp plugin export ( <plugin-name> | --all ) [--path <directory-path>] [--file <filename>]
-   or: wp plugin import ( <plugin-name> | --all ) [--path <directory-path>] [--file <filename>]
+   or: wp plugin path    [<plugin-name>] [--directory]
+   or: wp plugin install  <plugin-name>  [--activate] [--dev]
+   or: wp plugin export  [<plugin-name>] [--path <directory-path>] [--file <filename>]
+   or: wp plugin import  [<plugin-name>] [--path <directory-path>] [--file <filename>]
 
 Available sub-commands:
    status       display status of all installed plugins or of a particular plugin
@@ -455,18 +386,6 @@ Available sub-commands:
    uninstall    run the uninstallation procedure for a plugin
 
    delete       delete a plugin
-
-   export       export settings for a plugin (if supported by community or by plugin author directly)
-      --status     list installed plugins, indicating support for settings export (Y/N)
-      --all        export settings for all export-capable plugins 
-      --path       optionally override directory path to write settings export files
-      --file       optionally override settings export filename (single plugin export only)
-
-   import       export settings for a plugin (if supported by community or by plugin author directly)
-      --status     list installed plugins, indicating support for settings import (Y/N)
-      --all        import settings for all import-capable plugins
-      --path       optionally override directory path of settings import files
-      --file       optionally override settings import filename (single plugin import only)
 EOB
 	);
 	}
