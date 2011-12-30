@@ -11,15 +11,43 @@ WP_CLI::addCommand('db-migrate', 'DbMigrationCommand');
 class DbMigrationCommand extends WP_CLI_Command {
 
 public function __construct( $args, $assoc_args ) {
-    $generate['core']   = array();
-    $generate['plugin'] = array();
-    $generate['theme']  = array();
+    $this->generate['core']   = array();
+    $this->generate['plugin'] = array();
+    $this->generate['theme']  = array();
     
-    $apply['core']      = array();
-    $apply['plugin']    = array();
-    $apply['theme']     = array();
+    $this->apply['core']      = array();
+    $this->apply['plugin']    = array();
+    $this->apply['theme']     = array();
     
-    // Load all migrations
+    // -- define and create default migration data directories
+    //
+    define('WP_CLI_DB_MIGRATION_DIR_NAME'
+     , WP_CONTENT_DIR_NAME . '/migrations');
+    define('WP_CLI_DB_MIGRATION_DIR'
+     , WP_CONTENT_DIR_PATH . '/' . WP_CLI_DB_MIGRATION_DIR_NAME);
+    define('WP_CLI_DB_MIGRATION_CORE_DIR'
+     , WP_CLI_DB_MIGRATION_DIR . '/' . 'core');
+    define('WP_CLI_DB_MIGRATION_PLUGIN_DIR'
+     , WP_CLI_DB_MIGRATION_DIR . '/' . 'plugins');
+    define('WP_CLI_DB_MIGRATION_THEME_DIR'
+     , WP_CLI_DB_MIGRATION_DIR . '/' . 'themes');
+     
+    if (!@wp_mkdir_p(WP_CLI_DB_MIGRATION_CORE_DIR)) {
+      WP_CLI::error(WP_CLI_DB_MIGRATION_CORE_DIR);
+    }
+    if (!@wp_mkdir_p(WP_CLI_DB_MIGRATION_PLUGIN_DIR)) {
+      WP_CLI::error(WP_CLI_DB_MIGRATION_PLUGIN_DIR);
+    }
+    if (!@wp_mkdir_p(WP_CLI_DB_MIGRATION_THEME_DIR)) {
+      WP_CLI::error(WP_CLI_DB_MIGRATION_THEME_DIR);
+    }
+     
+    $this->ouput_dirs['core']   = WP_CLI_DB_MIGRATION_CORE_DIR;
+    $this->ouput_dirs['plugin'] = WP_CLI_DB_MIGRATION_PLUGIN_DIR;
+    $this->ouput_dirs['theme']  = WP_CLI_DB_MIGRATION_THEME_DIR;
+    
+    // Load all migration classes
+    //
     foreach ( glob(WP_CLI_ROOT.'/commands/community/db-migrations/*.php') as $filename ) {
     	include $filename;
     }
@@ -74,7 +102,7 @@ public function __construct( $args, $assoc_args ) {
 	 *        function $func
 	 * @return void
 	 */
-  function add_migration($type, $name, $func) {    
+  function add_migration($type, $name, $func) {  
     if (!is_array($this->apply[$type][$name]))
       $this->apply[$type][$name] = array();
     
@@ -179,9 +207,19 @@ public function __construct( $args, $assoc_args ) {
     if (array_key_exists($type, $this->generate)) {         
       if (array_key_exists($name, $this->generate[$type])) {
         $generators_found = true;
+      	$dumper = new sfYamlDumper();
         
         foreach ( $this->generate[$type][$name] as $gen)
-          call_user_func($gen);        
+          $data['default'] = call_user_func($gen); 
+      	  $default = $dumper->dump($data,7);
+          $filename = $this->ouput_dirs[$type]. '/' . $gen[0].'.yaml';
+          $fh = fopen($filename, 'w') or die("There was an error, accessing the requested file.");
+          fwrite($fh, $default);
+          fclose($fh);
+          
+          // print_r($filename);
+          // print "\n";
+          // print "$default\n";                 
       }
     }
       
@@ -221,7 +259,6 @@ public function __construct( $args, $assoc_args ) {
   
   }
   
-  
 	/**
 	 * Help function for this command
 	 */
@@ -250,5 +287,30 @@ public function __construct( $args, $assoc_args ) {
 EOB
 	);
 	}
+}
+
+class WP_CLI_Migration {
+   
+  /**
+   * Generate current settings of a plugin
+   *
+   * @param array $args
+   */
+  function generate() {
+    // virtual function - create in subclass
+  	// return array of migration data
+  }
+
+
+  /**
+   * Import settings of a plugin
+   *
+   * @param array $args
+   */
+  function migrate($args) {
+    // virtual function - create in subclass
+    // receives an array of migration data
+  }
+
 }
 
