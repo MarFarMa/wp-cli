@@ -282,7 +282,7 @@ class PluginCommand extends WP_CLI_Command {
 	}
 
 	/* PRIVATES */
-  
+
 	/**
 	 * Get the details of a plugin
 	 *
@@ -337,8 +337,8 @@ class PluginCommand extends WP_CLI_Command {
 	public static function help() {
 		WP_CLI::line( <<<EOB
 usage: wp plugin <sub-command> [<plugin-name>]
-   or: wp plugin path    [<plugin-name>] [--directory]
-   or: wp plugin install  <plugin-name>  [--activate] [--dev]
+   or: wp plugin path [<plugin-name>] [--directory]
+   or: wp plugin install <plugin-name>  [--activate] [--dev]
 
 Available sub-commands:
    status       display status of all installed plugins or of a particular plugin
