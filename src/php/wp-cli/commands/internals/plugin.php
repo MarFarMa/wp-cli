@@ -1,4 +1,5 @@
 <?php
+
 WP_CLI::addCommand('plugin', 'PluginCommand');
 
 /**
@@ -267,7 +268,6 @@ class PluginCommand extends WP_CLI_Command {
 		uninstall_plugin( $file );
 	}
 
-
 	/**
 	 * Delete a plugin
 	 *
@@ -282,7 +282,7 @@ class PluginCommand extends WP_CLI_Command {
 	}
 
 	/* PRIVATES */
-
+  
 	/**
 	 * Get the details of a plugin
 	 *
