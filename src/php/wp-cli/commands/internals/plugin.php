@@ -339,8 +339,6 @@ class PluginCommand extends WP_CLI_Command {
 usage: wp plugin <sub-command> [<plugin-name>]
    or: wp plugin path    [<plugin-name>] [--directory]
    or: wp plugin install  <plugin-name>  [--activate] [--dev]
-   or: wp plugin export  [<plugin-name>] [--path <directory-path>] [--file <filename>]
-   or: wp plugin import  [<plugin-name>] [--path <directory-path>] [--file <filename>]
 
 Available sub-commands:
    status       display status of all installed plugins or of a particular plugin
