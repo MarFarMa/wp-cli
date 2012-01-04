@@ -109,6 +109,87 @@ public function __construct( $args, $assoc_args ) {
     array_push($this->apply[$type][$name], $func);  
   }
   
+	public function migrate( $args, $assoc_args ) {
+
+    $migrators_found = false;
+
+    if ( array_key_exists('type', $assoc_args) )
+     $type = $assoc_args['type'];
+    else {
+      WP_CLI::line( '<type> missing.  Usage: wp db-migrate migrate --type=<plugin|theme|core> [--name=<name>]' ); 
+      exit; 
+    }
+   
+    if ( array_key_exists('name', $assoc_args) )
+     $name = $assoc_args['name'];
+    else {
+      $name = 'all';
+    }
+    
+		$defaults = array(
+			'path'			=>		$this->ouput_dirs[$type],
+			'stage'			=>		'default'
+		);          
+		$args = wp_parse_args( $assoc_args, $defaults );    
+    
+    if (array_key_exists($type, $this->apply)) {         
+      if ('all' == $name) {
+        $migrators_found = true;
+        foreach ( $this->apply[$type] as $k => $v) {
+          $args['name'] = $k;
+          $this->migrate_name( $args, $assoc_args );
+        }
+      } else if (array_key_exists($name, $this->apply[$type])) {
+        $migrators_found = $this->migrate_name( $args, $assoc_args );
+      }
+    }
+      
+    if ($migrators_found == false) {
+  	  WP_CLI::line('No Migrations found for type: '.$type.' and name: '.$name);
+    }
+
+	}
+  
+	/**
+	 * Run migration hooks by type and name, called by migrate command
+	 * initial input validations done before call
+   *
+	 * @param string $kind - generate or migrate
+	 *        string $type - primary array key
+	 *        string $name - secondary array key
+	 * @return true if given migration hook was found
+	 */
+  private function migrate_name( $args, $assoc_args ) {
+    
+    $migrators_found = false;
+    $migration_data = array();
+    
+    $type = $args['type'];
+    $name = $args['name'];
+    $stage = $args['stage'];
+    
+    foreach ( $this->apply[$type][$name] as $app) {
+
+      $migrators_found = true;
+      $filename = $args['path']. '/' . $app[0].'.yml';
+                  
+      $data = sfYaml::load($filename);
+      $migration_data = $data[$stage];
+      
+      if (0 < count($migration_data) ) {
+        WP_CLI::line('Migrating ' . $type .' '. $name 
+          . ' stage: ' . $stage . '.');  
+        call_user_func($app, $migration_data);
+      } else {
+        WP_CLI::line('Nothing to do for ' . $type .' '. $name 
+          . ' stage: ' . $stage . '.');  
+      }    
+    }
+    
+    return $migrators_found;
+  }
+  
+  
 	/**
 	 * List registered migration hooks by type or by type and name
 	 *
@@ -207,12 +288,12 @@ public function __construct( $args, $assoc_args ) {
     if (array_key_exists($type, $this->generate)) {         
       if (array_key_exists($name, $this->generate[$type])) {
         $generators_found = true;
-      	$dumper = new sfYamlDumper();
+      	//$dumper = new sfYamlDumper();
         
         foreach ( $this->generate[$type][$name] as $gen)
           $data['default'] = call_user_func($gen); 
-      	  $default = $dumper->dump($data,7);
-          $filename = $this->ouput_dirs[$type]. '/' . $gen[0].'.yaml';
+      	  $default = sfYaml::dump($data,7);
+          $filename = $this->ouput_dirs[$type]. '/' . $gen[0].'.yml';
           $fh = fopen($filename, 'w') or die("There was an error, accessing the requested file.");
           fwrite($fh, $default);
           fclose($fh);
@@ -264,7 +345,7 @@ public function __construct( $args, $assoc_args ) {
 	 */
 	public static function help() {
 		WP_CLI::line( <<<EOB
-      usage: wp migration <sub-command> [--type <plugin|theme|core>] [--name <name>] [--path <directory-path>] [--file <filename>] [--stage <stage-name>]
+      usage: wp migration <sub-command> [--type <plugin|theme|core>] [--name <name>] [--path <directory-path>] [--stage <stage-name>]
 
       Available sub-commands:
          support        list of migration callbacks registered
@@ -280,10 +361,11 @@ public function __construct( $args, $assoc_args ) {
            --name       name of migration to apply.  Defaults to all for specified type
            --stage      specifies the migration file section to process.  If not provided, migration will use the default section.  If no section for <stage-name> is found "nothing to do for stage='<stage-name>'" will be reported. 
                  
-         apply           update the wp database according to the contents of the migration file(s) specified
+         migrate           update the wp database according to the contents of the migration file(s) specified
            --type       category of migration, either plugin, theme, or core.  Defaults to core, if not specified
            --name       name of migration to apply.  Defaults to all for specified type
-           --stage      specifies the migration file section to process.  If not provided, migration will use the default section.  If no section for <stage-name> is found "nothing to do for stage='<stage-name>'" will be reported. 
+           --path       override the default path of <wp-content-dir>/migrations/<type> for migration input data
+           --stage      specifies the migration file section to process.  If not provided, migration will use the 'default' migration.  If no section for <stage-name> is found "nothing to do for stage='<stage-name>'" will be reported. 
 EOB
 	);
 	}

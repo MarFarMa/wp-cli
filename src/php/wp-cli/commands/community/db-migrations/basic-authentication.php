@@ -14,10 +14,10 @@ class BasicAuthMigration extends WP_CLI_Migration {
   /**
    * Generate current settings of a plugin
    *
-   * @param array $args
    */
   function generate() {
     $data['options'] = array();
+    
     $data['options']['basic_authentication_enabled'] =
       get_option( 'basic_authentication_enabled' )?"on":"off";
     
@@ -28,21 +28,43 @@ class BasicAuthMigration extends WP_CLI_Migration {
       get_option( 'basic_authentication_password' );
     
     return $data;
-  }
+    
+  } // function generate
 
   /**
    * Import settings of a plugin
    *
-   * @param array $args
+   * @param array $data
    */
-  function migrate(){
-  	list( $file, $name ) = $this->parse_name( $args, __FUNCTION__ );
+  function migrate($data){
 
-  	if ( is_plugin_active( $file ) ) {
-  		$this->deactivate( $args );
-  		// import YAML data
-  		$this->activate( $args );
-  	}
-
-  }
+    // Process options, if any    
+    if (array_key_exists('options', $data)) {
+      
+      if (array_key_exists('basic_authentication_enabled'
+                            , $data['options'])) {
+        if ("on" == $data['options']['basic_authentication_enabled']) {
+          update_option( 'basic_authentication_enabled',1);
+        } else {
+          // checkbox: option only exists when checked 'on'
+          delete_option( 'basic_authentication_enabled');
+        }
+      }
+    
+      if (array_key_exists('basic_authentication_method'
+                            , $data['options'])) {
+        update_option( 'basic_authentication_method', 
+                        $data['options']['basic_authentication_method']);   
+      }
+    
+      if (array_key_exists('basic_authentication_password'
+                            , $data['options'])) {
+        update_option( 'basic_authentication_password',
+                      $data['options']['basic_authentication_password']);
+      }
+      
+    }
+    
+  } // function migrate
+  
 }
